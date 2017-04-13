@@ -67,8 +67,27 @@ object ModOpenComputers extends ModProxy {
       "OpenComputers",
       "li.cil.oc.integration.opencomputers.ModOpenComputers.canCharge",
       "li.cil.oc.integration.opencomputers.ModOpenComputers.charge")
+
     api.IMC.registerInkProvider("li.cil.oc.integration.opencomputers.ModOpenComputers.inkCartridgeInkProvider")
     api.IMC.registerInkProvider("li.cil.oc.integration.opencomputers.ModOpenComputers.dyeInkProvider")
+
+    api.IMC.registerProgramDiskLabel("build", "builder", "Lua 5.2", "Lua 5.3", "LuaJ")
+    api.IMC.registerProgramDiskLabel("dig", "dig", "Lua 5.2", "Lua 5.3", "LuaJ")
+    api.IMC.registerProgramDiskLabel("base64", "data", "Lua 5.2", "Lua 5.3", "LuaJ")
+    api.IMC.registerProgramDiskLabel("deflate", "data", "Lua 5.2", "Lua 5.3", "LuaJ")
+    api.IMC.registerProgramDiskLabel("gpg", "data", "Lua 5.2", "Lua 5.3", "LuaJ")
+    api.IMC.registerProgramDiskLabel("inflate", "data", "Lua 5.2", "Lua 5.3", "LuaJ")
+    api.IMC.registerProgramDiskLabel("md5sum", "data", "Lua 5.2", "Lua 5.3", "LuaJ")
+    api.IMC.registerProgramDiskLabel("sha256sum", "data", "Lua 5.2", "Lua 5.3", "LuaJ")
+    api.IMC.registerProgramDiskLabel("refuel", "generator", "Lua 5.2", "Lua 5.3", "LuaJ")
+    api.IMC.registerProgramDiskLabel("irc", "irc", "Lua 5.2", "Lua 5.3", "LuaJ")
+    api.IMC.registerProgramDiskLabel("maze", "maze", "Lua 5.2", "Lua 5.3", "LuaJ")
+    api.IMC.registerProgramDiskLabel("arp", "network", "Lua 5.2", "Lua 5.3", "LuaJ")
+    api.IMC.registerProgramDiskLabel("ifconfig", "network", "Lua 5.2", "Lua 5.3", "LuaJ")
+    api.IMC.registerProgramDiskLabel("ping", "network", "Lua 5.2", "Lua 5.3", "LuaJ")
+    api.IMC.registerProgramDiskLabel("route", "network", "Lua 5.2", "Lua 5.3", "LuaJ")
+    api.IMC.registerProgramDiskLabel("opl-flash", "openloader", "Lua 5.2", "Lua 5.3", "LuaJ")
+    api.IMC.registerProgramDiskLabel("oppm", "oppm", "Lua 5.2", "Lua 5.3", "LuaJ")
 
     ForgeChunkManager.setForcedChunkLoadingCallback(OpenComputers, ChunkloaderUpgradeHandler)
 
@@ -79,14 +98,15 @@ object ModOpenComputers extends ModProxy {
 
     MinecraftForge.EVENT_BUS.register(Analyzer)
     MinecraftForge.EVENT_BUS.register(AngelUpgradeHandler)
+    MinecraftForge.EVENT_BUS.register(BlockChangeHandler)
     MinecraftForge.EVENT_BUS.register(ChunkloaderUpgradeHandler)
     MinecraftForge.EVENT_BUS.register(EventHandler)
     MinecraftForge.EVENT_BUS.register(ExperienceUpgradeHandler)
     MinecraftForge.EVENT_BUS.register(FileSystemAccessHandler)
-    MinecraftForge.EVENT_BUS.register(GeolyzerHandler)
     MinecraftForge.EVENT_BUS.register(HoverBootsHandler)
     MinecraftForge.EVENT_BUS.register(Loot)
     MinecraftForge.EVENT_BUS.register(NanomachinesHandler.Common)
+    MinecraftForge.EVENT_BUS.register(NetworkActivityHandler)
     MinecraftForge.EVENT_BUS.register(RobotCommonHandler)
     MinecraftForge.EVENT_BUS.register(SaveHandler)
     MinecraftForge.EVENT_BUS.register(Tablet)
@@ -97,8 +117,6 @@ object ModOpenComputers extends ModProxy {
     MinecraftForge.EVENT_BUS.register(li.cil.oc.server.ComponentTracker)
 
     api.Driver.add(ConverterNanomachines)
-
-    api.Driver.add(DriverBlockEnvironments)
 
     api.Driver.add(DriverAPU)
     api.Driver.add(DriverComponentBus)
@@ -126,6 +144,10 @@ object ModOpenComputers extends ModProxy {
     api.Driver.add(DriverScreen)
     api.Driver.add(DriverTransposer)
 
+    api.Driver.add(DriverDiskDriveMountable)
+    api.Driver.add(DriverServer)
+    api.Driver.add(DriverTerminalServer)
+
     api.Driver.add(DriverUpgradeAngel)
     api.Driver.add(DriverUpgradeBattery)
     api.Driver.add(DriverUpgradeChunkloader)
@@ -144,6 +166,41 @@ object ModOpenComputers extends ModProxy {
     api.Driver.add(DriverUpgradeTank)
     api.Driver.add(DriverUpgradeTankController)
     api.Driver.add(DriverUpgradeTractorBeam)
+    api.Driver.add(DriverUpgradeTrading)
+    api.Driver.add(DriverUpgradeMF)
+
+    api.Driver.add(DriverAPU.Provider)
+    api.Driver.add(DriverDataCard.Provider)
+    api.Driver.add(DriverDebugCard.Provider)
+    api.Driver.add(DriverEEPROM.Provider)
+    api.Driver.add(DriverGraphicsCard.Provider)
+    api.Driver.add(DriverInternetCard.Provider)
+    api.Driver.add(DriverLinkedCard.Provider)
+    api.Driver.add(DriverNetworkCard.Provider)
+    api.Driver.add(DriverRedstoneCard.Provider)
+    api.Driver.add(DriverWirelessNetworkCard.Provider)
+
+    api.Driver.add(DriverGeolyzer.Provider)
+    api.Driver.add(DriverScreen.Provider)
+    api.Driver.add(DriverTransposer.Provider)
+
+    api.Driver.add(DriverUpgradeChunkloader.Provider)
+    api.Driver.add(DriverUpgradeCrafting.Provider)
+    api.Driver.add(DriverUpgradeExperience.Provider)
+    api.Driver.add(DriverUpgradeGenerator.Provider)
+    api.Driver.add(DriverUpgradeInventoryController.Provider)
+    api.Driver.add(DriverUpgradeLeash.Provider)
+    api.Driver.add(DriverUpgradeNavigation.Provider)
+    api.Driver.add(DriverUpgradePiston.Provider)
+    api.Driver.add(DriverUpgradeSign.Provider)
+    api.Driver.add(DriverUpgradeTankController.Provider)
+    api.Driver.add(DriverUpgradeTractorBeam.Provider)
+    api.Driver.add(DriverUpgradeMF.Provider)
+
+    api.Driver.add(EnvironmentProviderBlocks)
+
+    api.Driver.add(InventoryProviderDatabase)
+    api.Driver.add(InventoryProviderServer)
 
     blacklistHost(classOf[internal.Adapter],
       Constants.BlockName.Geolyzer,
@@ -166,7 +223,8 @@ object ModOpenComputers extends ModProxy {
       Constants.ItemName.SolarGeneratorUpgrade,
       Constants.ItemName.TankUpgrade,
       Constants.ItemName.TractorBeamUpgrade,
-      Constants.ItemName.LeashUpgrade)
+      Constants.ItemName.LeashUpgrade,
+      Constants.ItemName.TradingUpgrade)
     blacklistHost(classOf[internal.Drone],
       Constants.BlockName.Keyboard,
       Constants.BlockName.ScreenTier1,
@@ -206,7 +264,8 @@ object ModOpenComputers extends ModProxy {
       Constants.ItemName.TankUpgrade,
       Constants.ItemName.TankControllerUpgrade,
       Constants.ItemName.TractorBeamUpgrade,
-      Constants.ItemName.LeashUpgrade)
+      Constants.ItemName.LeashUpgrade,
+      Constants.ItemName.TradingUpgrade)
     blacklistHost(classOf[internal.Robot],
       Constants.BlockName.Transposer,
       Constants.ItemName.LeashUpgrade)
@@ -229,7 +288,8 @@ object ModOpenComputers extends ModProxy {
       Constants.ItemName.InventoryControllerUpgrade,
       Constants.ItemName.TankUpgrade,
       Constants.ItemName.TankControllerUpgrade,
-      Constants.ItemName.LeashUpgrade)
+      Constants.ItemName.LeashUpgrade,
+      Constants.ItemName.TradingUpgrade)
 
     if (!WirelessRedstone.isAvailable) {
       blacklistHost(classOf[internal.Drone], Constants.ItemName.RedstoneCardTier2)
@@ -312,7 +372,10 @@ object ModOpenComputers extends ModProxy {
 
   object DefinitionPathProvider extends PathProvider {
     private final val Blacklist = Set(
-      "debugger"
+      Constants.ItemName.Debugger,
+      Constants.ItemName.DiamondChip,
+      Constants.BlockName.Endstone,
+      Constants.ItemName.IronNugget
     )
 
     override def pathFor(stack: ItemStack): String = Option(api.Items.get(stack)) match {

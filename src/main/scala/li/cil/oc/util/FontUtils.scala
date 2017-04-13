@@ -11,6 +11,7 @@ object FontUtils {
   // who would have known!
   private val widths = {
     val ba = Array.fill[Byte](0x10000)(-1)
+    // Note to self: NOT VIA THE FUCKING RESOURCE SYSTEM BECAUSE IT'S FUCKING CLIENT ONLY YOU IDIOT.
     val is = FontUtils.getClass.getResourceAsStream("/assets/opencomputers/wcwidth.bin")
     if (is != null) {
       try {

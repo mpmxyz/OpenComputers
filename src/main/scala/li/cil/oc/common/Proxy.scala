@@ -11,16 +11,19 @@ import li.cil.oc.common.entity.Drone
 import li.cil.oc.common.init.Blocks
 import li.cil.oc.common.init.Items
 import li.cil.oc.common.item.Delegator
+import li.cil.oc.common.item.traits.Delegate
 import li.cil.oc.common.recipe.Recipes
 import li.cil.oc.integration.Mods
 import li.cil.oc.server._
 import li.cil.oc.server.machine.luac.LuaStateFactory
 import li.cil.oc.server.machine.luac.NativeLua52Architecture
 import li.cil.oc.server.machine.luaj.LuaJLuaArchitecture
+import net.minecraft.item.Item
 import net.minecraft.item.ItemStack
 import net.minecraftforge.oredict.OreDictionary
 
 import scala.collection.convert.WrapAsScala._
+import scala.reflect.ClassTag
 
 class Proxy {
   def preInit(e: FMLPreInitializationEvent) {
@@ -43,20 +46,8 @@ class Proxy {
     OreDictionary.registerOre("chest", net.minecraft.init.Blocks.chest)
     OreDictionary.registerOre("chest", net.minecraft.init.Blocks.trapped_chest)
 
-    val nuggetIron = Items.get(Constants.ItemName.IronNugget).createItemStack(1)
-    registerExclusive("nuggetIron", nuggetIron)
-
-    Delegator.subItem(nuggetIron) match {
-      case Some(subItem: item.IronNugget) =>
-        if (OreDictionary.getOres("nuggetIron").exists(nuggetIron.isItemEqual)) {
-          Recipes.addSubItem(subItem, "nuggetIron")
-          Recipes.addItem(net.minecraft.init.Items.iron_ingot, "ingotIron")
-        }
-        else {
-          subItem.showInItemList = false
-        }
-      case _ =>
-    }
+    tryRegisterNugget[item.IronNugget](Constants.ItemName.IronNugget, "nuggetIron", net.minecraft.init.Items.iron_ingot, "ingotIron")
+    tryRegisterNugget[item.DiamondChip](Constants.ItemName.DiamondChip, "chipDiamond", net.minecraft.init.Items.diamond, "gemDiamond")
 
     // Avoid issues with Extra Utilities registering colored obsidian as `obsidian`
     // oredict entry, but not normal obsidian, breaking some recipes.
@@ -108,6 +99,24 @@ class Proxy {
     driver.Registry.locked = true
   }
 
+  def tryRegisterNugget[TItem <: Delegate : ClassTag](nuggetItemName: String, nuggetOredictName: String, ingotItem: Item, ingotOredictName: String): Unit = {
+    val nugget = Items.get(nuggetItemName).createItemStack(1)
+
+    registerExclusive(nuggetOredictName, nugget)
+
+    Delegator.subItem(nugget) match {
+      case Some(subItem: TItem) =>
+        if (OreDictionary.getOres(nuggetOredictName).exists(nugget.isItemEqual)) {
+          Recipes.addSubItem(subItem, nuggetItemName)
+          Recipes.addItem(ingotItem, ingotOredictName)
+        }
+        else {
+          subItem.showInItemList = false
+        }
+      case _ =>
+    }
+  }
+
   private def registerExclusive(name: String, items: ItemStack*) {
     if (OreDictionary.getOres(name).isEmpty) {
       for (item <- items) {
@@ -122,6 +131,7 @@ class Proxy {
 
   // Example usage: OpenComputers.ID + ":rack" -> "serverRack"
   private val blockRenames = Map[String, String](
+    OpenComputers.ID + ":serverRack" -> Constants.BlockName.Rack // Yay, full circle >_>
   )
 
   // Example usage: OpenComputers.ID + ":tabletCase" -> "tabletCase1"
@@ -129,7 +139,8 @@ class Proxy {
     OpenComputers.ID + ":microcontrollerCase" -> Constants.ItemName.MicrocontrollerCaseTier1,
     OpenComputers.ID + ":droneCase" -> Constants.ItemName.DroneCaseTier1,
     OpenComputers.ID + ":tabletCase" -> Constants.ItemName.TabletCaseTier1,
-    OpenComputers.ID + ":dataCard" -> Constants.ItemName.DataCardTier1
+    OpenComputers.ID + ":dataCard" -> Constants.ItemName.DataCardTier1,
+    OpenComputers.ID + ":serverRack" -> Constants.BlockName.Rack
   )
 
   def missingMappings(e: FMLMissingMappingsEvent) {

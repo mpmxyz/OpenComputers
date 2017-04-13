@@ -3,6 +3,8 @@ package li.cil.oc
 import java.io._
 import java.net.Inet4Address
 import java.net.InetAddress
+import java.nio.charset.StandardCharsets
+import java.security.SecureRandom
 import java.util.UUID
 
 import com.google.common.net.InetAddresses
@@ -11,12 +13,16 @@ import com.typesafe.config._
 import cpw.mods.fml.common.Loader
 import cpw.mods.fml.common.versioning.DefaultArtifactVersion
 import cpw.mods.fml.common.versioning.VersionRange
-import li.cil.oc.api.component.TextBuffer.ColorDepth
+import li.cil.oc.Settings.DebugCardAccess
 import li.cil.oc.common.Tier
 import li.cil.oc.integration.Mods
+import li.cil.oc.server.component.DebugCard
+import li.cil.oc.server.component.DebugCard.AccessContext
+import org.apache.commons.codec.binary.Hex
 import org.apache.commons.lang3.StringEscapeUtils
 
 import scala.collection.convert.WrapAsScala._
+import scala.collection.mutable
 import scala.io.Codec
 import scala.io.Source
 import scala.util.matching.Regex
@@ -46,6 +52,7 @@ class Settings(val config: Config) {
       OpenComputers.log.warn("Bad number of HUD coordiantes, ignoring.")
       (-1.0, -1.0)
   }
+  val enableNanomachinePfx = config.getBoolean("client.enableNanomachinePfx")
 
   // ----------------------------------------------------------------------- //
   // computer
@@ -65,7 +72,7 @@ class Settings(val config: Config) {
     case Array(tier1, tier2, tier3) =>
       Array(tier1: Double, tier2: Double, tier3: Double)
     case _ =>
-      OpenComputers.log.warn("Bad number of CPU call budgets, ignoring.")
+      OpenComputers.log.warn("Bad number of call budgets, ignoring.")
       Array(0.5, 1.0, 1.5)
   }
   val canComputersBeOwned = config.getBoolean("computer.canComputersBeOwned")
@@ -76,6 +83,7 @@ class Settings(val config: Config) {
 
   // computer.lua
   val allowBytecode = config.getBoolean("computer.lua.allowBytecode")
+  val allowGC = config.getBoolean("computer.lua.allowGC")
   val enableLua53 = config.getBoolean("computer.lua.enableLua53")
   val ramSizes = Array(config.getIntList("computer.lua.ramSizes"): _*) match {
     case Array(tier1, tier2, tier3, tier4, tier5, tier6) =>
@@ -85,6 +93,7 @@ class Settings(val config: Config) {
       Array(192, 256, 384, 512, 768, 1024)
   }
   val ramScaleFor64Bit = config.getDouble("computer.lua.ramScaleFor64Bit") max 1
+  val maxTotalRam = config.getInt("computer.lua.maxTotalRam") max 0
 
   // ----------------------------------------------------------------------- //
   // robot
@@ -133,8 +142,9 @@ class Settings(val config: Config) {
 
   // ----------------------------------------------------------------------- //
   // power
+  var is3rdPartyPowerSystemPresent = false
   val pureIgnorePower = config.getBoolean("power.ignorePower")
-  lazy val ignorePower = pureIgnorePower || !Mods.isPowerProvidingModPresent
+  lazy val ignorePower = pureIgnorePower || (!is3rdPartyPowerSystemPresent && !Mods.isPowerProvidingModPresent)
   val tickFrequency = config.getDouble("power.tickFrequency") max 1
   val chargeRateExternal = config.getDouble("power.chargerChargeRate")
   val chargeRateTablet = config.getDouble("power.chargerChargeRateTablet")
@@ -212,6 +222,7 @@ class Settings(val config: Config) {
   val transposerCost = config.getDouble("power.cost.transposer") max 0
   val nanomachineCost = config.getDouble("power.cost.nanomachineInput") max 0
   val nanomachineReconfigureCost = config.getDouble("power.cost.nanomachinesReconfigure") max 0
+  val mfuCost = config.getDouble("power.cost.mfuRelay") max 0
 
   // power.rate
   val accessPointRate = config.getDouble("power.rate.accessPoint") max 0
@@ -236,6 +247,7 @@ class Settings(val config: Config) {
   private val valueIndustrialCraft2 = config.getDouble("power.value.IndustrialCraft2")
   private val valueMekanism = config.getDouble("power.value.Mekanism")
   private val valueRedstoneFlux = config.getDouble("power.value.RedstoneFlux")
+  private val valueRotaryCraft = config.getDouble("power.value.RotaryCraft") / 11256.0
 
   private val valueInternal = 1000
 
@@ -245,6 +257,7 @@ class Settings(val config: Config) {
   val ratioIndustrialCraft2 = valueIndustrialCraft2 / valueInternal
   val ratioMekanism = valueMekanism / valueInternal
   val ratioRedstoneFlux = valueRedstoneFlux / valueInternal
+  val ratioRotaryCraft = valueRotaryCraft / valueInternal
 
   // ----------------------------------------------------------------------- //
   // filesystem
@@ -274,6 +287,7 @@ class Settings(val config: Config) {
   // ----------------------------------------------------------------------- //
   // internet
   val httpEnabled = config.getBoolean("internet.enableHttp")
+  val httpHeadersEnabled = config.getBoolean("internet.enableHttpHeaders")
   val tcpEnabled = config.getBoolean("internet.enableTcp")
   val httpHostBlacklist = Array(config.getStringList("internet.blacklist").map(new Settings.AddressValidator(_)): _*)
   val httpHostWhitelist = Array(config.getStringList("internet.whitelist").map(new Settings.AddressValidator(_)): _*)
@@ -321,15 +335,10 @@ class Settings(val config: Config) {
   val maxOpenPorts = config.getInt("misc.maxOpenPorts") max 0
   val maxWirelessRange = config.getDouble("misc.maxWirelessRange") max 0
   val rTreeMaxEntries = 10
-  val terminalsPerTier = Array(config.getIntList("misc.terminalsPerTier"): _*) match {
-    case Array(tier1, tier2, tier3) =>
-      Array(math.max(tier1, 1), math.max(tier2, 1), math.max(tier3, 1))
-    case _ =>
-      OpenComputers.log.warn("Bad number of Remote Terminal counts, ignoring.")
-      Array(2, 4, 8)
-  }
+  val terminalsPerServer = 4
   val updateCheck = config.getBoolean("misc.updateCheck")
   val lootProbability = config.getInt("misc.lootProbability")
+  val lootRecrafting = config.getBoolean("misc.lootRecrafting")
   val geolyzerRange = config.getInt("misc.geolyzerRange")
   val geolyzerNoise = config.getDouble("misc.geolyzerNoise").toFloat max 0
   val disassembleAllTheThings = config.getBoolean("misc.disassembleAllTheThings")
@@ -348,6 +357,8 @@ class Settings(val config: Config) {
   val dataCardTimeout = config.getDouble("misc.dataCardTimeout") max 0
   val serverRackSwitchTier = (config.getInt("misc.serverRackSwitchTier") - 1) max Tier.None min Tier.Three
   val redstoneDelay = config.getDouble("misc.redstoneDelay") max 0
+  val tradingRange = config.getDouble("misc.tradingRange") max 0
+  val mfuRange = config.getInt("misc.mfuRange") max 0 min 128
 
   // ----------------------------------------------------------------------- //
   // nanomachines
@@ -405,13 +416,27 @@ class Settings(val config: Config) {
   val logFullLibLoadErrors = config.getBoolean("debug.logFullNativeLibLoadErrors")
   val forceNativeLib = config.getString("debug.forceNativeLibWithName")
   val logOpenGLErrors = config.getBoolean("debug.logOpenGLErrors")
-  val logUnifontErrors = config.getBoolean("debug.logUnifontErrors")
+  val logHexFontErrors = config.getBoolean("debug.logHexFontErrors")
   val alwaysTryNative = config.getBoolean("debug.alwaysTryNative")
   val debugPersistence = config.getBoolean("debug.verbosePersistenceErrors")
   val nativeInTmpDir = config.getBoolean("debug.nativeInTmpDir")
   val periodicallyForceLightUpdate = config.getBoolean("debug.periodicallyForceLightUpdate")
   val insertIdsInConverters = config.getBoolean("debug.insertIdsInConverters")
-  val enableDebugCard = config.getBoolean("debug.enableDebugCard")
+
+  val debugCardAccess = config.getValue("debug.debugCardAccess").unwrapped() match {
+    case "true" | "allow" | java.lang.Boolean.TRUE => DebugCardAccess.Allowed
+    case "false" | "deny" | java.lang.Boolean.FALSE => DebugCardAccess.Forbidden
+    case "whitelist" =>
+      val wlFile = new File(Loader.instance.getConfigDir + File.separator + "opencomputers" + File.separator +
+                              "debug_card_whitelist.txt")
+
+      DebugCardAccess.Whitelist(wlFile)
+
+    case _ => // Fallback to most secure configuration
+      OpenComputers.log.warn("Unknown debug card access type, falling back to `deny`. Allowed values: `allow`, `deny`, `whitelist`.")
+      DebugCardAccess.Forbidden
+  }
+
   val registerLuaJArchitecture = config.getBoolean("debug.registerLuaJArchitecture")
   val disableLocaleChanging = config.getBoolean("debug.disableLocaleChanging")
 }
@@ -422,7 +447,7 @@ object Settings {
   val savePath = "opencomputers/"
   val scriptPath = "/assets/" + resourceDomain + "/lua/"
   val screenResolutionsByTier = Array((50, 16), (80, 25), (160, 50))
-  val screenDepthsByTier = Array(ColorDepth.OneBit, ColorDepth.FourBit, ColorDepth.EightBit)
+  val screenDepthsByTier = Array(api.internal.TextBuffer.ColorDepth.OneBit, api.internal.TextBuffer.ColorDepth.FourBit, api.internal.TextBuffer.ColorDepth.EightBit)
   val deviceComplexityByTier = Array(12, 24, 32, 9001)
   var rTreeDebugRenderer = false
   var blockRenderId = -1
@@ -555,4 +580,95 @@ object Settings {
     def apply(inetAddress: InetAddress, host: String) = validator(inetAddress, host)
   }
 
+  sealed trait DebugCardAccess {
+    def checkAccess(ctx: Option[DebugCard.AccessContext]): Option[String]
+  }
+
+  object DebugCardAccess {
+    case object Forbidden extends DebugCardAccess {
+      override def checkAccess(ctx: Option[AccessContext]): Option[String] =
+        Some("debug card is disabled")
+    }
+
+    case object Allowed extends DebugCardAccess {
+      override def checkAccess(ctx: Option[AccessContext]): Option[String] = None
+    }
+
+    case class Whitelist(noncesFile: File) extends DebugCardAccess {
+      private val values = mutable.Map.empty[String, String]
+      private val rng = SecureRandom.getInstance("SHA1PRNG")
+
+      load()
+
+      def save(): Unit = {
+        val noncesDir = noncesFile.getParentFile
+        if (!noncesDir.exists() && !noncesDir.mkdirs())
+          throw new IOException(s"Cannot create nonces directory: ${noncesDir.getCanonicalPath}")
+
+        val writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(noncesFile), StandardCharsets.UTF_8), false)
+        try {
+          for ((p, n) <- values)
+            writer.println(s"$p $n")
+        } finally writer.close()
+      }
+
+      def load(): Unit = {
+        values.clear()
+
+        if (!noncesFile.exists())
+          return
+
+        val reader = new BufferedReader(new InputStreamReader(new FileInputStream(noncesFile), StandardCharsets.UTF_8))
+        Iterator.continually(reader.readLine())
+          .takeWhile(_ != null)
+          .map(_.split(" ", 2))
+          .flatMap {
+            case Array(p, n) => Seq(p -> n)
+            case _ => Nil
+          }.foreach(values += _)
+      }
+
+      private def generateNonce(): String = {
+        val buf = new Array[Byte](16)
+        rng.nextBytes(buf)
+        new String(Hex.encodeHex(buf, true))
+      }
+
+      def nonce(player: String) = values.get(player.toLowerCase)
+
+      def isWhitelisted(player: String) = values.contains(player.toLowerCase)
+
+      def whitelist: collection.Set[String] = values.keySet
+
+      def add(player: String): Unit = {
+        if (!values.contains(player.toLowerCase)) {
+          values.put(player.toLowerCase, generateNonce())
+          save()
+        }
+      }
+
+      def remove(player: String): Unit = {
+        if (values.remove(player.toLowerCase).isDefined)
+          save()
+      }
+
+      def invalidate(player: String): Unit = {
+        if (values.contains(player.toLowerCase)) {
+          values.put(player.toLowerCase, generateNonce())
+          save()
+        }
+      }
+
+      def checkAccess(ctxOpt: Option[DebugCard.AccessContext]): Option[String] = ctxOpt match {
+        case Some(ctx) => values.get(ctx.player.toLowerCase) match {
+          case Some(x) =>
+            if (x == ctx.nonce) None
+            else Some("debug card is invalidated, please re-bind it to yourself")
+          case None => Some("you are not whitelisted to use debug card")
+        }
+
+        case None => Some("debug card is whitelisted, Shift+Click with it to bind card to yourself")
+      }
+    }
+  }
 }

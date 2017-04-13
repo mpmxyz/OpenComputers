@@ -116,8 +116,8 @@ class Screen(var tier: Int) extends traits.TextBuffer with SidedEnvironment with
     val (rx, ry) = ((ax - border) / iw, (ay - border) / ih)
 
     // Make it a relative position in the displayed buffer.
-    val bw = origin.buffer.getWidth
-    val bh = origin.buffer.getHeight
+    val bw = origin.buffer.getViewportWidth
+    val bh = origin.buffer.getViewportHeight
     val (bpw, bph) = (origin.buffer.renderWidth / iw.toDouble, origin.buffer.renderHeight / ih.toDouble)
     val (brx, bry) = if (bpw > bph) {
       val rh = bph.toDouble / bpw.toDouble
@@ -248,16 +248,9 @@ class Screen(var tier: Int) extends traits.TextBuffer with SidedEnvironment with
         val hitX = arrow.posX - x
         val hitY = arrow.posY - y
         val hitZ = arrow.posZ - z
-        val hitXInner = math.abs(hitX - 0.5) < 0.45
-        val hitYInner = math.abs(hitY - 0.5) < 0.45
-        val hitZInner = math.abs(hitZ - 0.5) < 0.45
-        if (hitXInner && hitYInner && !hitZInner ||
-          hitXInner && !hitYInner && hitZInner ||
-          !hitXInner && hitYInner && hitZInner) {
-          arrow.shootingEntity match {
-            case player: EntityPlayer if player == Minecraft.getMinecraft.thePlayer => click(hitX, hitY, hitZ)
-            case _ =>
-          }
+        arrow.shootingEntity match {
+          case player: EntityPlayer if player == Minecraft.getMinecraft.thePlayer => click(hitX, hitY, hitZ)
+          case _ =>
         }
       }
       arrows.clear()

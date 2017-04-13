@@ -169,6 +169,8 @@ class Drone(val world: World) extends Entity(world) with MachineHost with intern
 
   override def stop() = machine.stop()
 
+  override def consumeCallBudget(callCost: Double) = machine.consumeCallBudget(callCost)
+
   override def signal(name: String, args: AnyRef*) = machine.signal(name, args: _*)
 
   // ----------------------------------------------------------------------- //
@@ -462,10 +464,13 @@ class Drone(val world: World) extends Entity(world) with MachineHost with intern
     super.hitByEntity(entity)
   }
 
-  override def interactFirst(player: EntityPlayer) = {
+  override def interactFirst(player: EntityPlayer): Boolean = {
+    if (isDead) return false
     if (player.isSneaking) {
       if (Wrench.isWrench(player.getHeldItem)) {
-        kill()
+        if(!world.isRemote) {
+          kill()
+        }
       }
       else if (!world.isRemote && !machine.isRunning) {
         preparePowerUp()
@@ -532,6 +537,7 @@ class Drone(val world: World) extends Entity(world) with MachineHost with intern
   }
 
   override def kill(): Unit = {
+    if (isDead) return
     super.kill()
     if (!world.isRemote) {
       val stack = api.Items.get(Constants.ItemName.Drone).createItemStack(1)
@@ -579,6 +585,7 @@ class Drone(val world: World) extends Entity(world) with MachineHost with intern
   }
 
   override def writeEntityToNBT(nbt: NBTTagCompound) {
+    if (worldObj.isRemote) return
     components.saveComponents()
     info.storedEnergy = control.node.localBuffer.toInt
     nbt.setNewCompoundTag("info", info.save)

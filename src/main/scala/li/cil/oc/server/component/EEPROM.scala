@@ -1,8 +1,14 @@
 package li.cil.oc.server.component
 
+import java.util
+
 import com.google.common.hash.Hashing
+import li.cil.oc.Constants
+import li.cil.oc.api.driver.DeviceInfo.DeviceAttribute
+import li.cil.oc.api.driver.DeviceInfo.DeviceClass
 import li.cil.oc.Settings
 import li.cil.oc.api.Network
+import li.cil.oc.api.driver.DeviceInfo
 import li.cil.oc.api.machine.Arguments
 import li.cil.oc.api.machine.Callback
 import li.cil.oc.api.machine.Context
@@ -10,14 +16,16 @@ import li.cil.oc.api.network._
 import li.cil.oc.api.prefab
 import net.minecraft.nbt.NBTTagCompound
 
-class EEPROM extends prefab.ManagedEnvironment {
+import scala.collection.convert.WrapAsJava._
+
+class EEPROM extends prefab.ManagedEnvironment with DeviceInfo {
   override val node = Network.newNode(this, Visibility.Neighbors).
     withComponent("eeprom", Visibility.Neighbors).
     withConnector().
     create()
 
   var codeData = Array.empty[Byte]
-  
+
   var volatileData = Array.empty[Byte]
 
   var readonly = false
@@ -25,6 +33,19 @@ class EEPROM extends prefab.ManagedEnvironment {
   var label = "EEPROM"
 
   def checksum = Hashing.crc32().hashBytes(codeData).toString
+
+  // ----------------------------------------------------------------------- //
+
+  private final lazy val deviceInfo = Map(
+    DeviceAttribute.Class -> DeviceClass.Memory,
+    DeviceAttribute.Description -> "EEPROM",
+    DeviceAttribute.Vendor -> Constants.DeviceInfo.DefaultVendor,
+    DeviceAttribute.Product -> "FlashStick2k",
+    DeviceAttribute.Capacity -> Settings.get.eepromSize.toString,
+    DeviceAttribute.Size -> Settings.get.eepromSize.toString
+  )
+
+  override def getDeviceInfo: util.Map[String, String] = deviceInfo
 
   // ----------------------------------------------------------------------- //
 
@@ -59,7 +80,7 @@ class EEPROM extends prefab.ManagedEnvironment {
     result(label)
   }
 
-  @Callback(direct = true, doc = """function():string -- Get the storage capacity of this EEPROM.""")
+  @Callback(direct = true, doc = """function():number -- Get the storage capacity of this EEPROM.""")
   def getSize(context: Context, args: Arguments): Array[AnyRef] = result(Settings.get.eepromSize)
 
   @Callback(direct = true, doc = """function():string -- Get the checksum of the data on this EEPROM.""")
@@ -74,7 +95,7 @@ class EEPROM extends prefab.ManagedEnvironment {
     else result(Unit, "incorrect checksum")
   }
 
-  @Callback(direct = true, doc = """function():string -- Get the storage capacity of this EEPROM.""")
+  @Callback(direct = true, doc = """function():number -- Get the storage capacity of this EEPROM.""")
   def getDataSize(context: Context, args: Arguments): Array[AnyRef] = result(Settings.get.eepromDataSize)
 
   @Callback(direct = true, doc = """function():string -- Get the currently stored byte array.""")

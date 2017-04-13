@@ -38,7 +38,7 @@ object Constants {
     final val ScreenTier1 = "screen1"
     final val ScreenTier2 = "screen2"
     final val ScreenTier3 = "screen3"
-    final val ServerRack = "serverRack"
+    final val Rack = "rack"
     final val Switch = "switch"
     final val Transposer = "transposer"
     final val Waypoint = "waypoint"
@@ -87,7 +87,9 @@ object Constants {
     final val DataCardTier3 = "dataCard3"
     final val DebugCard = "debugCard"
     final val Debugger = "debugger"
+    final val DiamondChip = "chipDiamond"
     final val Disk = "disk"
+    final val DiskDriveMountable = "diskDriveMountable"
     final val Drone = "drone"
     final val DroneCaseCreative = "droneCaseCreative"
     final val DroneCaseTier1 = "droneCase1"
@@ -116,6 +118,7 @@ object Constants {
     final val LinkedCard = "linkedCard"
     final val LootDisk = "lootDisk"
     final val LuaBios = "luaBios"
+    final val MFU = "mfu"
     final val Manual = "manual"
     final val MicrocontrollerCaseCreative = "microcontrollerCaseCreative"
     final val MicrocontrollerCaseTier1 = "microcontrollerCase1"
@@ -124,7 +127,7 @@ object Constants {
     final val NavigationUpgrade = "navigationUpgrade"
     final val NetworkCard = "lanCard"
     final val NumPad = "numPad"
-    final val OpenOS = "openOS"
+    final val OpenOS = "openos"
     final val PistonUpgrade = "pistonUpgrade"
     final val Present = "present"
     final val PrintedCircuitBoard = "printedCircuitBoard"
@@ -150,8 +153,10 @@ object Constants {
     final val TankControllerUpgrade = "tankControllerUpgrade"
     final val TankUpgrade = "tankUpgrade"
     final val Terminal = "terminal"
+    final val TerminalServer = "terminalServer"
     final val TexturePicker = "texturePicker"
     final val TractorBeamUpgrade = "tractorBeamUpgrade"
+    final val TradingUpgrade = "tradingUpgrade"
     final val Transistor = "transistor"
     final val UpgradeContainerTier1 = "upgradeContainer1"
     final val UpgradeContainerTier2 = "upgradeContainer2"
@@ -165,6 +170,13 @@ object Constants {
     def MicrocontrollerCase(tier: Int) = ItemUtils.caseNameWithTierSuffix("microcontrollerCase", tier)
 
     def TabletCase(tier: Int) = ItemUtils.caseNameWithTierSuffix("tabletCase", tier)
+  }
+
+  object DeviceInfo {
+
+    final val DefaultVendor = "MightyPirates GmbH & Co. KG"
+    final val Scummtech = "Scummtech, Inc."
+
   }
 
 }

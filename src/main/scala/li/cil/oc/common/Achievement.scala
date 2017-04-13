@@ -123,7 +123,7 @@ object Achievement {
   val Rack = newAchievement("rack").
     at(8, 6).
     withParent(Case).
-    whenCrafting(Constants.BlockName.ServerRack).
+    whenCrafting(Constants.BlockName.Rack).
     add()
   val Server = newAchievement("server").
     at(10, 6).
@@ -213,6 +213,7 @@ object Achievement {
     withParent(Cable).
     whenCrafting(Constants.BlockName.Switch).
     whenCrafting(Constants.BlockName.AccessPoint).
+    whenCrafting(Constants.BlockName.Relay).
     add()
   val Adapter = newAchievement("adapter").
     at(-4, 1).

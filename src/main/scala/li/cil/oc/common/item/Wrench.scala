@@ -4,6 +4,7 @@ import li.cil.oc.api
 import li.cil.oc.common.asm.Injectable
 import li.cil.oc.integration.Mods
 import net.minecraft.block.Block
+import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityLivingBase
 import net.minecraft.entity.item.EntityMinecart
 import net.minecraft.entity.player.EntityPlayer
@@ -26,6 +27,7 @@ import net.minecraftforge.common.util.ForgeDirection
 ))
 class Wrench extends traits.SimpleItem with api.internal.Wrench {
   setHarvestLevel("wrench", 1)
+  setMaxStackSize(1)
 
   override def doesSneakBypassUse(world: World, x: Int, y: Int, z: Int, player: EntityPlayer): Boolean = true
 
@@ -57,6 +59,10 @@ class Wrench extends traits.SimpleItem with api.internal.Wrench {
   def canWrench(player: EntityPlayer, x: Int, y: Int, z: Int): Boolean = true
 
   def wrenchUsed(player: EntityPlayer, x: Int, y: Int, z: Int): Unit = player.swingItem()
+
+  def canWrench(player: EntityPlayer, entity: Entity): Boolean = true
+
+  def wrenchUsed(player: EntityPlayer, entity: Entity): Unit = player.swingItem()
 
   // CoFH
 

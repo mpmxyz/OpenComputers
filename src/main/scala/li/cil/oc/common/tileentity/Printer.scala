@@ -4,8 +4,12 @@ import java.util
 
 import cpw.mods.fml.relauncher.Side
 import cpw.mods.fml.relauncher.SideOnly
+import li.cil.oc.Constants
+import li.cil.oc.api.driver.DeviceInfo.DeviceAttribute
+import li.cil.oc.api.driver.DeviceInfo.DeviceClass
 import li.cil.oc.Settings
 import li.cil.oc.api
+import li.cil.oc.api.driver.DeviceInfo
 import li.cil.oc.api.machine.Arguments
 import li.cil.oc.api.machine.Callback
 import li.cil.oc.api.machine.Context
@@ -19,7 +23,9 @@ import net.minecraft.nbt.NBTTagCompound
 import net.minecraft.util.AxisAlignedBB
 import net.minecraftforge.common.util.ForgeDirection
 
-class Printer extends traits.Environment with traits.Inventory with traits.Rotatable with SidedEnvironment with traits.StateAware with ISidedInventory {
+import scala.collection.convert.WrapAsJava._
+
+class Printer extends traits.Environment with traits.Inventory with traits.Rotatable with SidedEnvironment with traits.StateAware with ISidedInventory with DeviceInfo {
   val node = api.Network.newNode(this, Visibility.Network).
     withComponent("printer3d").
     withConnector(Settings.get.bufferConverter).
@@ -41,6 +47,15 @@ class Printer extends traits.Environment with traits.Inventory with traits.Rotat
   val slotInk = 1
   val slotOutput = 2
 
+  private final lazy val deviceInfo = Map(
+    DeviceAttribute.Class -> DeviceClass.Printer,
+    DeviceAttribute.Description -> "3D Printer",
+    DeviceAttribute.Vendor -> Constants.DeviceInfo.DefaultVendor,
+    DeviceAttribute.Product -> "Omni-Materializer T6.1"
+  )
+
+  override def getDeviceInfo: util.Map[String, String] = deviceInfo
+
   // ----------------------------------------------------------------------- //
 
   @SideOnly(Side.CLIENT)
@@ -48,10 +63,10 @@ class Printer extends traits.Environment with traits.Inventory with traits.Rotat
 
   override def sidedNode(side: ForgeDirection) = if (side != ForgeDirection.UP) node else null
 
-  override def currentState = {
-    if (isPrinting) util.EnumSet.of(traits.State.IsWorking)
-    else if (canPrint) util.EnumSet.of(traits.State.CanWork)
-    else util.EnumSet.noneOf(classOf[traits.State])
+  override def getCurrentState = {
+    if (isPrinting) util.EnumSet.of(api.util.StateAware.State.IsWorking)
+    else if (canPrint) util.EnumSet.of(api.util.StateAware.State.CanWork)
+    else util.EnumSet.noneOf(classOf[api.util.StateAware.State])
   }
 
   // ----------------------------------------------------------------------- //

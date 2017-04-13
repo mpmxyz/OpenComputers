@@ -124,24 +124,22 @@ object Localization {
     def Warning = localizeImmediately("gui.Raid.Warning")
   }
 
-  object ServerRack {
-    def Top = localizeImmediately("gui.ServerRack.Top")
+  object Rack {
+    def Top = localizeImmediately("gui.Rack.Top")
 
-    def Bottom = localizeImmediately("gui.ServerRack.Bottom")
+    def Bottom = localizeImmediately("gui.Rack.Bottom")
 
-    def Left = localizeImmediately("gui.ServerRack.Left")
+    def Left = localizeImmediately("gui.Rack.Left")
 
-    def Right = localizeImmediately("gui.ServerRack.Right")
+    def Right = localizeImmediately("gui.Rack.Right")
 
-    def Back = localizeImmediately("gui.ServerRack.Back")
+    def Back = localizeImmediately("gui.Rack.Back")
 
-    def None = localizeImmediately("gui.ServerRack.None")
+    def None = localizeImmediately("gui.Rack.None")
 
-    def SwitchExternal = localizeImmediately("gui.ServerRack.SwitchExternal")
+    def RelayEnabled = localizeImmediately("gui.Rack.Enabled")
 
-    def SwitchInternal = localizeImmediately("gui.ServerRack.SwitchInternal")
-
-    def WirelessRange = localizeImmediately("gui.ServerRack.WirelessRange")
+    def RelayDisabled = localizeImmediately("gui.Rack.Disabled")
   }
 
   object Switch {
@@ -172,6 +170,8 @@ object Localization {
     def PrintLightValue(level: Int) = localizeImmediately("tooltip.Print.LightValue", level.toString)
 
     def PrintRedstoneLevel(level: Int) = localizeImmediately("tooltip.Print.RedstoneLevel", level.toString)
+
+    def MFULinked(isLinked: Boolean) = localizeImmediately(if (isLinked) "tooltip.UpgradeMF.Linked" else "tooltip.UpgradeMF.Unlinked")
   }
 
 }

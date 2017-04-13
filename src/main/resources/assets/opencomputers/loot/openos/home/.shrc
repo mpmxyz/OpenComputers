@@ -1,0 +1,5 @@
+alias l="ls -lhp"
+alias ..="cd .."
+alias df="df -h"
+
+alias grep="grep --color"

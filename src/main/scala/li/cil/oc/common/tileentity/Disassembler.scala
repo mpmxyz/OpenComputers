@@ -4,8 +4,12 @@ import java.util
 
 import cpw.mods.fml.relauncher.Side
 import cpw.mods.fml.relauncher.SideOnly
+import li.cil.oc.Constants
+import li.cil.oc.api.driver.DeviceInfo.DeviceAttribute
+import li.cil.oc.api.driver.DeviceInfo.DeviceClass
 import li.cil.oc.Settings
 import li.cil.oc.api
+import li.cil.oc.api.driver.DeviceInfo
 import li.cil.oc.api.network.Visibility
 import li.cil.oc.common.template.DisassemblerTemplates
 import li.cil.oc.server.{PacketSender => ServerPacketSender}
@@ -19,9 +23,10 @@ import net.minecraft.nbt.NBTTagCompound
 import net.minecraftforge.common.util.Constants.NBT
 import net.minecraftforge.common.util.ForgeDirection
 
+import scala.collection.convert.WrapAsJava._
 import scala.collection.mutable
 
-class Disassembler extends traits.Environment with traits.PowerAcceptor with traits.Inventory with traits.StateAware with traits.PlayerInputAware {
+class Disassembler extends traits.Environment with traits.PowerAcceptor with traits.Inventory with traits.StateAware with traits.PlayerInputAware with DeviceInfo {
   val node = api.Network.newNode(this, Visibility.None).
     withConnector(Settings.get.bufferConverter).
     create()
@@ -44,6 +49,15 @@ class Disassembler extends traits.Environment with traits.PowerAcceptor with tra
     world.notifyBlocksOfNeighborChange(x, y, z, block)
   }
 
+  private final lazy val deviceInfo = Map(
+    DeviceAttribute.Class -> DeviceClass.Generic,
+    DeviceAttribute.Description -> "Disassembler",
+    DeviceAttribute.Vendor -> Constants.DeviceInfo.DefaultVendor,
+    DeviceAttribute.Product -> "Break.3R-100"
+  )
+
+  override def getDeviceInfo: util.Map[String, String] = deviceInfo
+
   // ----------------------------------------------------------------------- //
 
   @SideOnly(Side.CLIENT)
@@ -53,10 +67,10 @@ class Disassembler extends traits.Environment with traits.PowerAcceptor with tra
 
   override def energyThroughput = Settings.get.disassemblerRate
 
-  override def currentState = {
-    if (isActive) util.EnumSet.of(traits.State.IsWorking)
-    else if (queue.nonEmpty) util.EnumSet.of(traits.State.CanWork)
-    else util.EnumSet.noneOf(classOf[traits.State])
+  override def getCurrentState = {
+    if (isActive) util.EnumSet.of(api.util.StateAware.State.IsWorking)
+    else if (queue.nonEmpty) util.EnumSet.of(api.util.StateAware.State.CanWork)
+    else util.EnumSet.noneOf(classOf[api.util.StateAware.State])
   }
 
   // ----------------------------------------------------------------------- //

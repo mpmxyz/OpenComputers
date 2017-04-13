@@ -6,15 +6,18 @@ import cpw.mods.fml.common.Optional
 import cpw.mods.fml.common.eventhandler.SubscribeEvent
 import cpw.mods.fml.common.gameevent.PlayerEvent._
 import cpw.mods.fml.common.gameevent.TickEvent
+import cpw.mods.fml.common.gameevent.TickEvent.ClientTickEvent
 import cpw.mods.fml.common.gameevent.TickEvent.ServerTickEvent
 import cpw.mods.fml.common.network.FMLNetworkEvent.ClientConnectedToServerEvent
 import li.cil.oc._
 import li.cil.oc.api.Network
 import li.cil.oc.api.detail.ItemInfo
-import li.cil.oc.api.internal.ServerRack
+import li.cil.oc.api.internal.Rack
+import li.cil.oc.api.internal.Server
 import li.cil.oc.api.machine.MachineHost
 import li.cil.oc.client.renderer.PetRenderer
 import li.cil.oc.common.asm.ClassTransformer
+import li.cil.oc.common.component.TerminalServer
 import li.cil.oc.common.item.data.MicrocontrollerData
 import li.cil.oc.common.item.data.RobotData
 import li.cil.oc.common.item.data.TabletData
@@ -23,6 +26,7 @@ import li.cil.oc.common.tileentity.Robot
 import li.cil.oc.common.tileentity.traits.power
 import li.cil.oc.integration.Mods
 import li.cil.oc.integration.util
+import li.cil.oc.integration.util.Wrench
 import li.cil.oc.server.component.Keyboard
 import li.cil.oc.server.machine.Callbacks
 import li.cil.oc.server.machine.Machine
@@ -49,7 +53,9 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 object EventHandler {
-  private val pending = mutable.Buffer.empty[() => Unit]
+  private val pendingServer = mutable.Buffer.empty[() => Unit]
+
+  private val pendingClient = mutable.Buffer.empty[() => Unit]
 
   private val runningRobots = mutable.Set.empty[Robot]
 
@@ -67,29 +73,35 @@ object EventHandler {
 
   def unscheduleClose(machine: Machine): Unit = machines -= machine
 
-  def schedule(tileEntity: TileEntity) {
-    if (SideTracker.isServer) pending.synchronized {
-      pending += (() => Network.joinOrCreateNetwork(tileEntity))
+  def scheduleServer(tileEntity: TileEntity) {
+    if (SideTracker.isServer) pendingServer.synchronized {
+      pendingServer += (() => Network.joinOrCreateNetwork(tileEntity))
     }
   }
 
-  def schedule(f: () => Unit) {
-    pending.synchronized {
-      pending += f
+  def scheduleServer(f: () => Unit) {
+    pendingServer.synchronized {
+      pendingServer += f
+    }
+  }
+
+  def scheduleClient(f: () => Unit) {
+    pendingClient.synchronized {
+      pendingClient += f
     }
   }
 
   @Optional.Method(modid = Mods.IDs.ForgeMultipart)
   def scheduleFMP(tileEntity: () => TileEntity) {
-    if (SideTracker.isServer) pending.synchronized {
-      pending += (() => Network.joinOrCreateNetwork(tileEntity()))
+    if (SideTracker.isServer) pendingServer.synchronized {
+      pendingServer += (() => Network.joinOrCreateNetwork(tileEntity()))
     }
   }
 
   @Optional.Method(modid = Mods.IDs.AppliedEnergistics2)
   def scheduleAE2Add(tileEntity: power.AppliedEnergistics2) {
-    if (SideTracker.isServer) pending.synchronized {
-      pending += (() => if (!tileEntity.isInvalid) {
+    if (SideTracker.isServer) pendingServer.synchronized {
+      pendingServer += (() => if (!tileEntity.isInvalid) {
         tileEntity.getGridNode(ForgeDirection.UNKNOWN).updateState()
       })
     }
@@ -97,8 +109,8 @@ object EventHandler {
 
   @Optional.Method(modid = Mods.IDs.IndustrialCraft2)
   def scheduleIC2Add(tileEntity: power.IndustrialCraft2Experimental) {
-    if (SideTracker.isServer) pending.synchronized {
-      pending += (() => if (!tileEntity.addedToIC2PowerGrid && !tileEntity.isInvalid) {
+    if (SideTracker.isServer) pendingServer.synchronized {
+      pendingServer += (() => if (!tileEntity.addedToIC2PowerGrid && !tileEntity.isInvalid) {
         MinecraftForge.EVENT_BUS.post(new ic2.api.energy.event.EnergyTileLoadEvent(tileEntity.asInstanceOf[ic2.api.energy.tile.IEnergyTile]))
         tileEntity.addedToIC2PowerGrid = true
       })
@@ -107,8 +119,8 @@ object EventHandler {
 
   @Optional.Method(modid = Mods.IDs.IndustrialCraft2Classic)
   def scheduleIC2Add(tileEntity: power.IndustrialCraft2Classic) {
-    if (SideTracker.isServer) pending.synchronized {
-      pending += (() => if (!tileEntity.addedToIC2PowerGrid && !tileEntity.isInvalid) {
+    if (SideTracker.isServer) pendingServer.synchronized {
+      pendingServer += (() => if (!tileEntity.addedToIC2PowerGrid && !tileEntity.isInvalid) {
         MinecraftForge.EVENT_BUS.post(new ic2classic.api.energy.event.EnergyTileLoadEvent(tileEntity.asInstanceOf[ic2classic.api.energy.tile.IEnergyTile]))
         tileEntity.addedToIC2PowerGrid = true
       })
@@ -116,8 +128,8 @@ object EventHandler {
   }
 
   def scheduleWirelessRedstone(rs: server.component.RedstoneWireless) {
-    if (SideTracker.isServer) pending.synchronized {
-      pending += (() => if (rs.node.network != null) {
+    if (SideTracker.isServer) pendingServer.synchronized {
+      pendingServer += (() => if (rs.node.network != null) {
         util.WirelessRedstone.addReceiver(rs)
         util.WirelessRedstone.updateOutput(rs)
       })
@@ -126,9 +138,9 @@ object EventHandler {
 
   @SubscribeEvent
   def onServerTick(e: ServerTickEvent) = if (e.phase == TickEvent.Phase.START) {
-    pending.synchronized {
-      val adds = pending.toArray
-      pending.clear()
+    pendingServer.synchronized {
+      val adds = pendingServer.toArray
+      pendingServer.clear()
       adds
     } foreach (callback => {
       try callback() catch {
@@ -153,6 +165,19 @@ object EventHandler {
       }
     })
     machines --= closed
+  }
+
+  @SubscribeEvent
+  def onClientTick(e: ClientTickEvent) = if (e.phase == TickEvent.Phase.START) {
+    pendingClient.synchronized {
+      val adds = pendingClient.toArray
+      pendingClient.clear()
+      adds
+    } foreach (callback => {
+      try callback() catch {
+        case t: Throwable => OpenComputers.log.warn("Error in scheduled tick action.", t)
+      }
+    })
   }
 
   @SubscribeEvent
@@ -194,9 +219,10 @@ object EventHandler {
     PetRenderer.isInitialized = false
     PetRenderer.hidden.clear()
     Loot.disksForClient.clear()
+    Loot.disksForCyclingClient.clear()
 
     client.Sound.startLoop(null, "computer_running", 0f, 0)
-    schedule(() => client.Sound.stopLoop(null))
+    scheduleServer(() => client.Sound.stopLoop(null))
   }
 
   @SubscribeEvent
@@ -245,6 +271,7 @@ object EventHandler {
 
   lazy val drone = api.Items.get(Constants.ItemName.Drone)
   lazy val eeprom = api.Items.get(Constants.ItemName.EEPROM)
+  lazy val floppy = api.Items.get(Constants.ItemName.Floppy)
   lazy val mcu = api.Items.get(Constants.BlockName.Microcontroller)
   lazy val navigationUpgrade = api.Items.get(Constants.ItemName.NavigationUpgrade)
   lazy val robot = api.Items.get(Constants.BlockName.Robot)
@@ -282,6 +309,20 @@ object EventHandler {
       new TabletData(stack).items.collect { case Some(item) => item }.find(api.Items.get(_) == eeprom)
     }) || didRecraft
 
+    didRecraft = {
+      if (Loot.isLootDisk(e.crafting)) {
+        val stacks = (0 until e.craftMatrix.getSizeInventory).flatMap(i => Option(e.craftMatrix.getStackInSlot(i))).toArray
+        if (stacks.length == 2) stacks.find(Wrench.isWrench) match {
+          case Some(stack) =>
+            stack.stackSize += 1
+            true
+          case _ => didRecraft
+        }
+        else didRecraft
+      }
+      else didRecraft
+    }
+
     // Presents?
     e.player match {
       case _: FakePlayer => // No presents for you, automaton. Such discrimination. Much bad conscience.
@@ -298,6 +339,17 @@ object EventHandler {
     }
 
     Achievement.onCraft(e.crafting, e.player)
+  }
+
+  @SubscribeEvent
+  def onPickup(e: ItemPickupEvent): Unit = {
+    val entity = e.pickedUp
+    Option(entity).flatMap(e => Option(e.getEntityItem)) match {
+      case Some(stack) =>
+        Achievement.onAssemble(stack, e.player)
+        Achievement.onCraft(stack, e.player)
+      case _ => // Huh.
+    }
   }
 
   private def timeForPresents = {
@@ -350,6 +402,9 @@ object EventHandler {
 
       Callbacks.clear()
     }
+    else {
+      TerminalServer.loaded.clear()
+    }
   }
 
   @SubscribeEvent
@@ -360,13 +415,10 @@ object EventHandler {
           case machine: Machine => scheduleClose(machine)
           case _ => // Dafuq?
         }
-        case rack: ServerRack =>
+        case rack: Rack =>
           (0 until rack.getSizeInventory).
-            map(rack.server).
-            filter(_ != null).
-            map(_.machine()).
-            filter(_ != null).
-            foreach(_.stop())
+            map(rack.getMountable).
+            collect { case server: Server if server.machine != null => server.machine.stop() }
       })
     }
   }

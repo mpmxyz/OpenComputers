@@ -43,6 +43,7 @@ Keep in mind that some of these may not be available, depending on the recipe se
 * [Inventory Controller](inventoryControllerUpgrade.md)
 * [Inventory Upgrade](inventoryUpgrade.md)
 * [Leash Upgrade](leashUpgrade.md)
+* [MFU](mfu.md)
 * [Navigation Upgrade](navigationUpgrade.md)
 * [Piston Upgrade](pistonUpgrade.md)
 * [Sign Upgrade](signUpgrade.md)
@@ -50,7 +51,13 @@ Keep in mind that some of these may not be available, depending on the recipe se
 * [Tank Controller](tankControllerUpgrade.md)
 * [Tank Upgrade](tankUpgrade.md)
 * [Tractor Beam Upgrade](tractorBeamUpgrade.md)
+* [Trading Upgrade](tradingUpgrade.md)
 * [Upgrade Container](upgradeContainer1.md)
+
+### Rack Mountables
+* [Disk Drive](diskDriveMountable.md)
+* [Server](server1.md)
+* [Terminal Server](terminalServer.md)
 
 ### Other
 * [APU](apu1.md)

@@ -683,7 +683,7 @@ sandbox = {
     end
     local result = getmetatable(t)
     -- check if we have a wrapped __gc using mt
-    if type(result) == "table" and rawget(result, "__gc") == sgc then
+    if type(result) == "table" and system.allowGC() and rawget(result, "__gc") == sgc then
       result = rawget(result, "mt")
     end
     return result
@@ -713,19 +713,32 @@ sandbox = {
     if type(mt) ~= "table" then
       return setmetatable(t, mt)
     end
-    if type(rawget(mt, "__gc")) == "function" then
-      -- For all user __gc functions we enforce a much tighter deadline.
-      -- This is because these functions may be called from the main
-      -- thread under certain circumstanced (such as when saving the world),
-      -- which can lead to noticeable lag if the __gc function behaves badly.
-      local sbmt = {} -- sandboxed metatable. only for __gc stuff, so it's
-                      -- kinda ok to have a shallow copy instead... meh.
-      for k, v in pairs(mt) do
-        sbmt[k] = v
+    if rawget(mt, "__gc") ~= nil then -- If __gc is set to ANYTHING not `nil`, we're gonna have issues
+      -- Garbage collector callbacks apparently can't be sandboxed after
+      -- all, because hooks are disabled while they're running. So we just
+      -- disable them altogether by default.
+      if system.allowGC() then
+        -- For all user __gc functions we enforce a much tighter deadline.
+        -- This is because these functions may be called from the main
+        -- thread under certain circumstanced (such as when saving the world),
+        -- which can lead to noticeable lag if the __gc function behaves badly.
+        local sbmt = {} -- sandboxed metatable. only for __gc stuff, so it's
+                        -- kinda ok to have a shallow copy instead... meh.
+        for k, v in next, mt do
+          sbmt[k] = v
+        end
+        sbmt.__gc = sgc
+        sbmt.mt = mt
+        mt = sbmt
+      else
+        -- Don't allow marking for finalization, but use the raw metatable.
+        local gc = rawget(mt, "__gc")
+        rawset(mt, "__gc", nil) -- remove __gc
+        local ret = table.pack(pcall(setmetatable, t, mt))
+        rawset(mt, "__gc", gc) -- restore __gc
+        if not ret[1] then error(ret[2], 0) end
+        return table.unpack(ret, 2, ret.n)
       end
-      sbmt.mt = mt
-      sbmt.__gc = sgc
-      mt = sbmt
     end
     return setmetatable(t, mt)
   end,
@@ -844,7 +857,9 @@ sandbox = {
     min = math.min,
     modf = math.modf,
     pi = math.pi,
-    pow = math.pow,
+    pow = math.pow or function(a, b) -- Deprecated in Lua 5.3
+      return a^b
+    end,
     rad = math.rad,
     random = function(...)
       return spcall(math.random, ...)
@@ -1042,7 +1057,7 @@ local userdataWrapper = {
   __metatable = "userdata",
   __tostring = function(self)
     local data = wrappedUserdata[self]
-    return tostring(select(2, pcall(data.toString, data)))
+    return tostring(select(2, pcall(tostring, data)))
   end
 }
 
@@ -1319,7 +1334,13 @@ local libcomputer = {
   end,
 
   beep = function(...)
-    libcomponent.invoke(computer.address(), "beep", ...)
+    return libcomponent.invoke(computer.address(), "beep", ...)
+  end,
+  getDeviceInfo = function()
+    return libcomponent.invoke(computer.address(), "getDeviceInfo")
+  end,
+  getProgramLocations = function()
+    return libcomponent.invoke(computer.address(), "getProgramLocations")
   end,
 
   getArchitectures = function(...)

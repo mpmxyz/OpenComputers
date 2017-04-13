@@ -76,8 +76,10 @@ object Mods {
     override def isModAvailable: Boolean = isModAvailable_
   }
   val Thaumcraft = new SimpleMod(IDs.Thaumcraft)
+  val ThaumicEnergistics = new SimpleMod(IDs.ThaumicEnergistics)
   val ThermalExpansion = new SimpleMod(IDs.ThermalExpansion, providesPower = true)
   val TinkersConstruct = new SimpleMod(IDs.TinkersConstruct)
+  val TIS3D = new SimpleMod(IDs.TIS3D, version = "@[0.7,)")
   val TMechWorks = new SimpleMod(IDs.TMechWorks)
   val VersionChecker = new SimpleMod(IDs.VersionChecker)
   val Waila = new SimpleMod(IDs.Waila)
@@ -121,8 +123,10 @@ object Mods {
     integration.rotarycraft.ModRotaryCraft,
     integration.stargatetech2.ModStargateTech2,
     integration.thaumcraft.ModThaumcraft,
+    integration.thaumicenergistics.ModThaumicEnergistics,
     integration.thermalexpansion.ModThermalExpansion,
     integration.tcon.ModTinkersConstruct,
+    integration.tis3d.ModTIS3D,
     integration.tmechworks.ModTMechworks,
     integration.vanilla.ModVanilla,
     integration.versionchecker.ModVersionChecker,
@@ -212,8 +216,10 @@ object Mods {
     final val RotaryCraft = "RotaryCraft"
     final val StargateTech2 = "StargateTech2"
     final val Thaumcraft = "Thaumcraft"
+    final val ThaumicEnergistics = "thaumicenergistics"
     final val ThermalExpansion = "ThermalExpansion"
     final val TinkersConstruct = "TConstruct"
+    final val TIS3D = "tis3d"
     final val TMechWorks = "TMechworks"
     final val VersionChecker = "VersionChecker"
     final val Waila = "Waila"

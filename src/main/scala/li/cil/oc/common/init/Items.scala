@@ -141,8 +141,12 @@ object Items extends ItemAPI {
 
   val registeredItems = mutable.ArrayBuffer.empty[ItemStack]
 
-  override def registerFloppy(name: String, color: Int, factory: Callable[FileSystem]): ItemStack = {
-    val stack = Loot.registerLootDisk(name, color, factory)
+  @Deprecated
+  override def registerFloppy(name: String, color: Int, factory: Callable[FileSystem]): ItemStack =
+    registerFloppy(name, color, factory, doRecipeCycling = false)
+
+  override def registerFloppy(name: String, color: Int, factory: Callable[FileSystem], doRecipeCycling: Boolean): ItemStack = {
+    val stack = Loot.registerLootDisk(name, color, factory, doRecipeCycling)
 
     registeredItems += stack
 
@@ -174,26 +178,6 @@ object Items extends ItemAPI {
   }
 
   // ----------------------------------------------------------------------- //
-
-  // Nobody should use this anyway, since it's internal, but IIRC some people do, so let's be nice...
-  // TODO remove in OC 1.6
-  /**
-   * @deprecated use <tt>api.Items.get("openOS").createItemStack(amount)</tt> instead.
-   */
-  @Deprecated
-  def createOpenOS(amount: Int = 1) = {
-    get(Constants.ItemName.OpenOS).createItemStack(amount)
-  }
-
-  // Nobody should use this anyway, since it's internal, but IIRC some people do, so let's be nice...
-  // TODO remove in OC 1.6
-  /**
-   * @deprecated use <tt>api.Items.get("luaBios").createItemStack(amount)</tt> instead.
-   */
-  @Deprecated
-  def createLuaBios(amount: Int = 1) = {
-    get(Constants.ItemName.LuaBios).createItemStack(amount)
-  }
 
   private def safeGetStack(name: String) = Option(get(name)).map(_.createItemStack(1)).orNull
 
@@ -540,8 +524,7 @@ object Items extends ItemAPI {
     registerItem(new item.APU(multi, Tier.Three), Constants.ItemName.APUCreative)
 
     // 1.5.13
-    // TODO 1.6 Remove oc:dataCard oredict entry.
-    Recipes.addSubItem(new item.DataCard(multi, Tier.One), Constants.ItemName.DataCardTier1, "oc:dataCard", "oc:dataCard1")
+    Recipes.addSubItem(new item.DataCard(multi, Tier.One), Constants.ItemName.DataCardTier1, "oc:dataCard1")
 
     // 1.5.15
     Recipes.addSubItem(new item.DataCard(multi, Tier.Two), Constants.ItemName.DataCardTier2, "oc:dataCard2")
@@ -549,6 +532,13 @@ object Items extends ItemAPI {
 
     // 1.5.18
     Recipes.addSubItem(new item.Nanomachines(multi), Constants.ItemName.Nanomachines, "oc:nanomachines")
+
+    // 1.6.0
+    Recipes.addSubItem(new item.TerminalServer(multi), Constants.ItemName.TerminalServer, "oc:terminalServer")
+    Recipes.addSubItem(new item.DiskDriveMountable(multi), Constants.ItemName.DiskDriveMountable, "oc:diskDriveMountable")
+    Recipes.addSubItem(new item.UpgradeTrading(multi), Constants.ItemName.TradingUpgrade, "oc:tradingUpgrade")
+    registerItem(new item.DiamondChip(multi), Constants.ItemName.DiamondChip)
+    Recipes.addSubItem(new item.UpgradeMF(multi), Constants.ItemName.MFU, "oc:mfu")
 
     // Register aliases.
     for ((k, v) <- aliases) {

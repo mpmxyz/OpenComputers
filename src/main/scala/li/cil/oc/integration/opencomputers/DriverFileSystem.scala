@@ -2,9 +2,10 @@ package li.cil.oc.integration.opencomputers
 
 import li.cil.oc
 import li.cil.oc.Constants
+import li.cil.oc.OpenComputers
 import li.cil.oc.Settings
 import li.cil.oc.api
-import li.cil.oc.api.driver.EnvironmentHost
+import li.cil.oc.api.network.EnvironmentHost
 import li.cil.oc.common.Loot
 import li.cil.oc.common.Slot
 import li.cil.oc.common.item.Delegator
@@ -17,6 +18,8 @@ import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NBTTagCompound
 
 object DriverFileSystem extends Item {
+  val UUIDVerifier = """^([0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12})$""".r
+
   override def worksWith(stack: ItemStack) = isOneOf(stack,
     api.Items.get(Constants.ItemName.HDDTier1),
     api.Items.get(Constants.ItemName.HDDTier2),
@@ -24,7 +27,8 @@ object DriverFileSystem extends Item {
     api.Items.get(Constants.ItemName.Floppy))
 
   override def createEnvironment(stack: ItemStack, host: EnvironmentHost) =
-    Delegator.subItem(stack) match {
+    if (host.world != null && host.world.isRemote) null
+    else Delegator.subItem(stack) match {
       case Some(hdd: HardDiskDrive) => createEnvironment(stack, hdd.kiloBytes * 1024, hdd.platterCount, host, hdd.tier + 2)
       case Some(disk: FloppyDisk) => createEnvironment(stack, Settings.get.floppySize * 1024, 1, host, 1)
       case _ => null
@@ -66,7 +70,7 @@ object DriverFileSystem extends Item {
       val sound = Settings.resourceDomain + ":" + (if (isFloppy) "floppy_access" else "hdd_access")
       val drive = new DriveData(stack)
       val environment = if (drive.isUnmanaged) {
-        Drive(capacity max 0, platterCount, label, Option(host), Option(sound), speed)
+        new Drive(capacity max 0, platterCount, label, Option(host), Option(sound), speed)
       }
       else {
         val fs = oc.api.FileSystem.fromSaveDirectory(address, capacity max 0, Settings.get.bufferChanges)
@@ -81,7 +85,14 @@ object DriverFileSystem extends Item {
 
   private def addressFromTag(tag: NBTTagCompound) =
     if (tag.hasKey("node") && tag.getCompoundTag("node").hasKey("address")) {
-      tag.getCompoundTag("node").getString("address")
+      tag.getCompoundTag("node").getString("address") match {
+        case UUIDVerifier(address) => address
+        case _ => // Invalid disk address.
+          val newAddress = java.util.UUID.randomUUID().toString
+          tag.getCompoundTag("node").setString("address", newAddress)
+          OpenComputers.log.warn(s"Generated new address for disk '${newAddress}'.")
+          newAddress
+      }
     }
     else java.util.UUID.randomUUID().toString
 
